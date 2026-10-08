@@ -10,3 +10,4 @@
  */
 
 export { PACKAGE_NAME, VERSION } from './meta.js'
+export * from './kernel/index.js'
