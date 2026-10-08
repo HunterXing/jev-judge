@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+*.log
+npm-debug.log*
+
+# Runtime state this tool writes next to a project
+.jev-judge/
+*.ndjson
+
+# Local private configuration must never be committed
+.env
+.env.*
+config.local.json

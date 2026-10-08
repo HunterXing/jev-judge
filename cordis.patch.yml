@@ -1,0 +1,22 @@
+# The dsh-jev-judge bundle patch: the judgment kernel as one profile layer.
+#
+# Every row below appends to the composition; later layers (the profile's own
+# cordis.patch.yml, the home layer, --patch overlays) win per row, so a user can
+# override this row's `config` without touching the package.
+#
+# A patch replaces the targeted row's whole `config`, so the values here are the
+# complete defaults for this plugin. `modes` mirrors the kernel's own defaults:
+# a decision point whose verdict can only loosen policy (tool.risk) starts in
+# `shadow` and has to earn `active` from the ledger.
+- insert:
+    - id: judge-kernel
+      name: 'dsh-jev-judge/host'
+      config:
+        modes:
+          default: shadow
+          tool.admission: active
+          tool.injection: active
+          turn.completion: active
+          turn.continue: active
+          memory.capture: active
+          tool.risk: shadow

@@ -1,0 +1,63 @@
+{
+  "name": "dsh-jev-judge",
+  "version": "0.1.0",
+  "description": "A judgment kernel for coding agents: bounded questions a small Jev judge answers, so the main model keeps its context and tokens for real reasoning.",
+  "type": "module",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HunterXing/jev-judge.git"
+  },
+  "homepage": "https://github.com/HunterXing/jev-judge#readme",
+  "bugs": {
+    "url": "https://github.com/HunterXing/jev-judge/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "jev",
+    "typesafe",
+    "judge",
+    "judgment-kernel",
+    "mcp",
+    "claude-code",
+    "codex",
+    "opencode",
+    "agent"
+  ],
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.1-alpha.1 <0.3.0-0"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./host": "./src/runtimes/dsh/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "jev-judge": "./src/cli.js"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "skills",
+    "README.md",
+    "README.zh.md",
+    "LICENSE",
+    "ATTRIBUTION.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
