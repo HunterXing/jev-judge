@@ -19,7 +19,7 @@ import { isAbsolute, join } from 'node:path'
 
 import { ChatJsonJudge } from './judges/chat-json.js'
 import { SystemOneJudge } from './judges/typesafe.js'
-import { ConfigError, loadKernelConfig, loadProviderConfig, validateKernelConfig } from './config.js'
+import { ConfigError, DEFAULT_KERNEL_CONFIG_PATH, loadKernelConfig, loadProviderConfig, validateKernelConfig } from './config.js'
 import { createEngine } from './decision.js'
 import { MemoryLedger, createLedger } from './ledger.js'
 import { createRedactor } from './redact.js'
@@ -172,6 +172,7 @@ export function createJudges({ kernel, provider, fetch }) {
 export function createJudgeRuntime(options = {}) {
   const env = options.env ?? process.env
   const problems = []
+  const kernelPath = options.kernelPath ?? env.JEV_JUDGE_CONFIG ?? DEFAULT_KERNEL_CONFIG_PATH
 
   let kernel
   try {
@@ -235,7 +236,7 @@ export function createJudgeRuntime(options = {}) {
     engine,
     kernel: kernelWithOverrides,
     provider,
-    paths: { provider: providerPath, kernel: options.kernelPath ?? '' },
+    paths: { provider: providerPath, kernel: kernelPath },
     problems,
     judgeNames: Object.keys(judges),
     ledger,

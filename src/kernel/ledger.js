@@ -143,6 +143,23 @@ export class FileLedger {
   }
 
   /**
+   * How many records the ledger holds. A count never needs the parsed records,
+   * so this does not pay for `JSON.parse` on a large file.
+   *
+   * @returns {number}
+   */
+  count() {
+    try {
+      const text = readFileSync(this.path, 'utf8')
+      let total = 0
+      for (const line of text.split('\n')) if (line.trim() !== '') total += 1
+      return total
+    } catch {
+      return 0
+    }
+  }
+
+  /**
    * Read the most recent records, oldest first. Unreadable lines are skipped:
    * a truncated last line is expected after a crash.
    *
@@ -206,6 +223,11 @@ export class MemoryLedger {
   read(options = {}) {
     const limit = options.limit ?? 50
     return limit > 0 ? this.records.slice(-limit) : [...this.records]
+  }
+
+  /** @returns {number} */
+  count() {
+    return this.records.length
   }
 }
 
