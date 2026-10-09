@@ -193,6 +193,38 @@ handshake, the tool list, notifications producing no reply, unknown methods
 returning `-32601`, invalid JSON returning `-32700`, and a judged call driven by
 a local provider.
 
+## R6 — two more clients
+
+Neither of these needed a code change; both went through the MCP server.
+
+**MiniMax Code** reads a project `.mcp.json`. A scratch project with
+
+```json
+{ "mcpServers": { "jev-judge": { "command": "node", "args": ["<repo>/src/cli.js", "mcp"] } } }
+```
+
+was handed one prompt, and the answer named exactly the three tools:
+
+```console
+$ mcode exec --cwd /tmp/mcode-mcp-test --timeout 3m "List every tool name you have available that comes from the MCP server named jev-judge."
+judge_ask
+judge_items
+judge_ledger
+```
+
+**Hermes** has its own MCP client:
+
+```console
+$ hermes mcp add jev-judge --command node --args <repo>/src/cli.js mcp
+  ✓ Connected! Found 3 tool(s) from 'jev-judge'
+$ hermes mcp test jev-judge
+  ✓ Connected (376ms)
+  ✓ Tools discovered: 3
+```
+
+Both report the same three tools, which is what "the kernel is host-free" means
+in practice: the agent changes, the decision points do not.
+
 ## What is not verified here
 
 - **A full agent turn inside DeepSeek Harness** driving the plugin's extension

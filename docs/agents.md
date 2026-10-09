@@ -38,7 +38,7 @@ of those to attach to.
 | Hermes | `hermes mcp add jev-judge --command node --args <path>/src/cli.js mcp` | ✅ connected, three tools discovered, saved to `~/.hermes/config.yaml` |
 | OpenCode | MCP server in `~/.config/opencode/opencode.json` | documented from that client's own config format |
 | Codex | MCP in `~/.codex/config.toml`; `~/.codex/hooks.json` for hooks | documented from that client's own config format |
-| MiniMax Code (`mcode`) | project `.mcp.json` with `mcpServers` — the same shape Claude Code uses | config file confirmed from its own bundle; handshake not run |
+| MiniMax Code (`mcode`) | project `.mcp.json` with `mcpServers` — the same shape Claude Code uses | ✅ a live `mcode exec` run listed `judge_items`, `judge_ask` and `judge_ledger` from that file |
 | Cursor, Cline, anything else with MCP | the stdio server below | the wire is standard MCP |
 
 An agent whose name is not on this list is not a gap in the kernel: if it speaks
