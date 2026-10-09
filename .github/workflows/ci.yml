@@ -8,6 +8,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # A runner that stalls must cost ten minutes, not the default six hours.
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -19,4 +21,10 @@ jobs:
           node-version: ${{ matrix.node }}
       # The package has no runtime dependencies and no build step on purpose:
       # `dsh plugin add` can load it straight from a checkout.
-      - run: node --test
+      #
+      # `--test-timeout` turns a test that never settles into a named failure
+      # instead of a step that runs until the job's own limit. The suite takes
+      # about five seconds on a laptop and spawns real child processes, so two
+      # minutes per test is generous; a hang means something is wrong with the
+      # test, not with the machine's speed.
+      - run: node --test --test-timeout=120000
