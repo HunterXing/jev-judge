@@ -181,6 +181,38 @@ The same token can publish every later release, but it should not have to: once
 trusted publishing is configured, delete the secret and the releases carry
 provenance without a long-lived credential.
 
+## Two things the tarball path taught us
+
+**A `latest/download/<name>.tgz` URL is a moving target, and pnpm says so.** The
+first install through it works. Re-installing after removing the bundle does not:
+
+```console
+[ERR_PNPM_MISSING_TARBALL_INTEGRITY] Cannot install package "<url>":
+its lockfile entry has no "integrity" field, so pnpm cannot verify the downloaded tarball.
+```
+
+The lockfile records the integrity of what it fetched, and the bytes behind a
+`latest` URL change with every release — so the entry and the file can no longer
+be reconciled. For a storefront link that a person clicks, `latest/download/` with
+a version-free filename is right (that is the convention the registry documents).
+For a **profile dependency**, name the tag and the release:
+
+```sh
+dsh plugin --profile <profile> add \
+  https://github.com/HunterXing/jev-judge/releases/download/v0.1.2/dsh-jev-judge.tgz
+```
+
+Both assets exist on every release for exactly this reason: a version-free name
+under `latest/download` for the README and the storefront, and whatever the tag
+pins for anything that records an integrity.
+
+**A GitHub-hosted tarball depends on GitHub being reachable.** Installing through
+pnpm's frozen-lockfile path retried for two minutes against a slow route to the
+release CDN before it succeeded, and a failed attempt rolls the profile back
+cleanly (the manifest and lockfile are restored, so the previous version stays
+installed and working). Nothing is lost by retrying later; it is worth knowing
+that a slow network shows up as a failed install rather than a slow one.
+
 ## Screenshots
 
 None are declared. The market falls back to images found in the repository
