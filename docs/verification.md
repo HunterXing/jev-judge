@@ -35,10 +35,10 @@ $ jev-judge verify
 Configuration valid.
 Config:     $HOME/.config/typesafe-ai-jev-skill.json
 Provider:   your-provider
-Base URL:   https://api.your-provider.example/provider
+Base URL:   https://api.your-provider.example
 Model:      jev
 Protocol:   systemone
-Endpoint:   https://api.your-provider.example/provider/v1/systemone
+Endpoint:   https://api.your-provider.example/v1/systemone
 Auth:       Authorization (Bearer)
 Key source: config file apiKey; value hidden
 
