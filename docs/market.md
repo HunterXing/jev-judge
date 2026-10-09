@@ -71,6 +71,37 @@ gh pr create --title "Add HunterXing/jev-judge" --body "A judgment kernel for co
 After the merge the website rebuilds itself, and the plugin appears in
 **Settings → Plugin Market** inside DeepSeek Harness.
 
+## Listing without npm
+
+npm is optional for the registry: entries point at a **repository**, and
+installing from GitHub works exactly as installing from the registry does. The
+plugin's description asks readers for neither.
+
+```sh
+dsh plugin --profile <profile> add github:HunterXing/jev-judge
+```
+
+This works without a build-script approval because the package has no build step
+and no runtime dependencies — a `prepare` script would have made pnpm ask the
+user to allowlist code execution before the plugin could install.
+
+For storefronts that prefer a prebuilt artifact, attach a version-free tarball
+to a GitHub Release and name it in the entry:
+
+```yaml
+tarball: https://github.com/HunterXing/jev-judge/releases/latest/download/dsh-jev-judge.tgz
+```
+
+The asset name must not carry the version: `latest/download/` resolves `latest`
+at request time but takes the filename literally, so a versioned name works the
+day it is submitted and 404s after the next release. Pin the tag instead if the
+filename should keep its version.
+
+What npm adds when it is used: a download count in the market, a host
+compatibility badge (storefronts read `engines.dsh` from the npm manifest), and
+`npx -y dsh-jev-judge mcp` as a zero-clone way to wire the MCP server into a
+client. None of them change whether the plugin can be found or installed.
+
 ## Publishing with CI
 
 `.github/workflows/release.yml` publishes on a version tag. There is no npm token
