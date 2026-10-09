@@ -196,13 +196,25 @@ export function createJudgeRuntime(options = {}) {
       join(homedir(), '.config', 'typesafe-ai-jev-skill.json')
   }
 
-  const kernelWithOverrides = options.judgeOverrides
-    ? {
-        ...kernel,
-        judges: { ...(kernel.judges ?? {}), ...options.judgeOverrides },
-        tiers: kernel.tiers ?? Object.keys({ ...(kernel.judges ?? {}), ...options.judgeOverrides }),
-      }
-    : kernel
+  // A host adapter passes what its own configuration says on top of the file, so
+  // a plugin row can set modes and a ledger path without writing a user file.
+  const overrides = options.overrides ?? {}
+  const declaredJudges = { ...(kernel.judges ?? {}), ...(overrides.judges ?? {}) }
+  // A tier order is only stated when someone stated one. Defaulting it here to
+  // the *declared* judges would freeze it before the built-in judge exists, and
+  // an empty order disables every decision point.
+  const declaredTiers = overrides.tiers ?? kernel.tiers
+  const kernelWithOverrides = {
+    ...kernel,
+    judges: declaredJudges,
+    ...(declaredTiers ? { tiers: declaredTiers } : {}),
+    modes: { ...kernel.modes, ...(overrides.modes ?? {}) },
+    routes: { ...kernel.routes, ...(overrides.routes ?? {}) },
+    ledger: { ...kernel.ledger, ...(overrides.ledger ?? {}) },
+    uncertainty: overrides.uncertainty ?? kernel.uncertainty,
+    options: { ...kernel.options, ...(overrides.options ?? {}) },
+    ...(overrides.timeoutMs ?? kernel.timeoutMs ? { timeoutMs: overrides.timeoutMs ?? kernel.timeoutMs } : {}),
+  }
 
   const { judges, tiers, problems: judgeProblems } = createJudges({
     kernel: kernelWithOverrides,
@@ -222,13 +234,15 @@ export function createJudgeRuntime(options = {}) {
     ? new MemoryLedger()
     : createLedger(ledgerOptions)
 
+  // Built from the merged configuration: a host adapter's row settings have to
+  // reach the engine, or a plugin that says `active` would silently stay shadow.
   const engine = createEngine({
     judges,
     tiers,
-    routes: kernel.routes,
-    modes: kernel.modes,
-    band: kernel.uncertainty,
-    timeoutMs: kernel.timeoutMs,
+    routes: kernelWithOverrides.routes,
+    modes: kernelWithOverrides.modes,
+    band: kernelWithOverrides.uncertainty,
+    timeoutMs: kernelWithOverrides.timeoutMs,
     ledger,
   })
 

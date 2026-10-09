@@ -38,7 +38,9 @@
     ".": "./src/index.js",
     "./host": "./src/runtimes/dsh/index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./mcp": "./src/runtimes/mcp/server.js",
+    "./hooks": "./src/runtimes/hooks/index.js"
   },
   "bin": {
     "jev-judge": "./src/cli.js"

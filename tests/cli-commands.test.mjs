@@ -398,11 +398,18 @@ test('every command documents itself', async () => {
   const { stdout, code } = await jev(['--help'])
   assert.equal(code, 0)
   const names = [...stdout.matchAll(/^ {2}(\w+)\s+\S/gm)].map((match) => match[1])
-  assert.deepEqual(names.sort(), ['doctor', 'judge', 'ledger', 'smoke', 'verify'])
+  assert.deepEqual(names.sort(), ['doctor', 'hook', 'judge', 'ledger', 'mcp', 'smoke', 'verify'])
 
   for (const name of names) {
     const help = await jev([name, '--help'])
     assert.equal(help.code, 0, `${name} --help must succeed`)
-    assert.ok(help.stdout.includes('Options:'), `${name} must document its options`)
+    // Every command explains itself beyond its one-line summary. A command with
+    // no options of its own documents arguments instead, so either heading is a
+    // complete answer.
+    assert.ok(
+      help.stdout.includes('Options:') || help.stdout.includes('Arguments:'),
+      `${name} must document its own arguments`,
+    )
+    assert.ok(help.stdout.length > 60, `${name} --help must say something useful`)
   }
 })
