@@ -167,7 +167,7 @@ export function apply(ctx, config) {
           spillPath,
         })
         if (admitted.outcome.mode !== 'keep') {
-          text = admitted.outcome.mode === 'drop' ? '' : admitted.outcome.content
+          text = admitted.outcome.content
           notes.push(admissionNote({ spillPath, ...admitted.outcome }))
         }
       }

@@ -264,8 +264,8 @@ async function postToolUse(payload, runtime, where) {
 
   if (kept.mode === 'keep' || kept.mode === undefined) return reply(parts)
 
-  // The note is what tells the model that something was removed and why, so it
-  // is emitted whether or not a judge trimmed anything further.
+  // The note is what tells the model that something was removed and why. The
+  // kept text always accompanies it: the point never forwards nothing.
   parts.push(
     admissionNote({
       kept: kept.kept ?? 0,

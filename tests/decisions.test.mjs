@@ -222,14 +222,20 @@ test('everything kept means the output is unchanged', async () => {
   assert.equal(decision.outcome.content, 'all of this matters')
 })
 
-test('nothing kept is a drop, not a silent truncation', async () => {
+test('nothing kept still hands over the head, never nothing at all', async () => {
+  // The pointer to the spilled original may lead somewhere the caller cannot
+  // read — an MCP-only client has no filesystem — so a result is never reduced
+  // to a note with nothing behind it.
   const decision = await engineFor(judge({}, 0.02)).decide(toolAdmission, {
     tool: 'bash',
     task: 't',
     output: 'pure noise',
   })
-  assert.equal(decision.outcome.mode, 'drop')
-  assert.equal(decision.outcome.content, '')
+  assert.equal(decision.outcome.mode, 'trimmed')
+  assert.equal(decision.outcome.content, 'pure noise')
+  assert.equal(decision.outcome.headKept, true)
+  assert.equal(decision.outcome.kept, 1)
+  assert.equal(decision.outcome.dropped, 0)
 })
 
 test('admission falls back to keeping everything, and shadow does not trim', async () => {
@@ -240,9 +246,10 @@ test('admission falls back to keeping everything, and shadow does not trim', asy
 
   const ledger = new MemoryLedger()
   const shadow = await engineFor(judge({}, 0.02), 'shadow', ledger).decide(toolAdmission, input)
-  assert.equal(shadow.outcome.mode, 'keep')
-  assert.equal(shadow.judged.kept, 0)
-  assert.equal(ledger.records[0].judged.kept, 0)
+  assert.equal(shadow.outcome.mode, 'keep', 'shadow changes nothing')
+  assert.equal(shadow.judged.headKept, true, 'and records what it would have done')
+  assert.equal(shadow.judged.kept, 1)
+  assert.equal(ledger.records[0].judged.headKept, true)
 })
 
 // ── tool.injection ───────────────────────────────────────────────────────────

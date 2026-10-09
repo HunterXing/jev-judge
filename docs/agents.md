@@ -107,7 +107,7 @@ profile's `cordis.patch.yml`, the home layer, `--patch`) overrides them per row:
 | `ctx.tools.register` | `judge.items` | A `judge_items` tool: many items, one question, one probability each |
 | `tools/pre-execute` | `tool.risk` | Only rule-flagged commands are judged; an unvouched call raises an approval, a vouched one proceeds |
 | `tools/post-execute` | `tool.injection` | Passages that read as instructions are replaced by a note; the full result is spilled to `$DSH_HOME/jev-judge/spill/` |
-| `tools/post-execute` | `tool.admission` | Only the chunks that matter are kept, with a note naming the spill file |
+| `tools/post-execute` | `tool.admission` | Only the chunks that matter are kept, with a note naming the spill file; when no chunk earns its place the head still goes through, so a result is never reduced to a bare pointer |
 | `agent/turn-stopping` | `turn.completion`, `turn.continue` | At most one completion nudge and two continuation nudges per turn; an irreversible next step is never pushed |
 | `agent/turn-stopping` | `memory.capture` | A correction is appended to `$DSH_HOME/jev-judge/lessons.md` |
 

@@ -12,6 +12,11 @@
     - id: judge-kernel
       name: 'dsh-jev-judge/host'
       config:
+        # A kernel that records nothing cannot be evaluated: the ledger is how a
+        # decision point earns `active`, and it is the first place to look when a
+        # result looks condensed. Kept under DSH_HOME, never inside a project.
+        ledger:
+          path: '~/.dsh/judge-ledger.ndjson'
         modes:
           default: shadow
           tool.admission: active

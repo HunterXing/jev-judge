@@ -177,8 +177,6 @@ export const toolAdmission = defineDecision({
       const answer = answers[`c${chunk.index}`]
       return answer !== undefined && answer.probability >= KEEP_THRESHOLD
     })
-    const keptIndexes = new Set(kept.map((chunk) => chunk.index))
-    const droppedChunks = chunks.filter((chunk) => !keptIndexes.has(chunk.index))
     const bytesBefore = String(input.output ?? '').length
 
     if (chunks.length === 0) {
@@ -193,20 +191,28 @@ export const toolAdmission = defineDecision({
       }
     }
 
-    const mode = kept.length === chunks.length ? 'keep' : kept.length === 0 ? 'drop' : 'trimmed'
+    // A tool result the agent asked for is evidence, and the pointer to where it
+    // was spilled may lead somewhere that agent cannot read at all — an MCP-only
+    // client has no filesystem. So when no chunk earned its place, the head still
+    // goes through: the result degrades to "trimmed, with a pointer", never to a
+    // note with nothing behind it.
+    const floored = kept.length === 0
+    const forwarded = floored ? [chunks[0]] : kept
+    const forwardedIndexes = new Set(forwarded.map((chunk) => chunk.index))
+    const dropped = chunks.filter((chunk) => !forwardedIndexes.has(chunk.index))
+    const mode = kept.length === chunks.length ? 'keep' : 'trimmed'
     const content =
       mode === 'keep'
         ? String(input.output ?? '')
-        : mode === 'drop'
-          ? ''
-          : kept.map((chunk) => chunk.text).join('\n')
+        : forwarded.map((chunk) => chunk.text).join('\n')
 
     return {
       mode,
       content,
-      kept: kept.length,
-      dropped: droppedChunks.length,
+      kept: forwarded.length,
+      dropped: dropped.length,
       chunks: chunks.length,
+      ...(floored ? { headKept: true } : {}),
       bytesBefore,
       bytesAfter: content.length,
     }

@@ -225,6 +225,29 @@ $ hermes mcp test jev-judge
 Both report the same three tools, which is what "the kernel is host-free" means
 in practice: the agent changes, the decision points do not.
 
+## R7 — two defects the first install found
+
+Both were found by installing the released plugin into a real profile and using
+it, not by the suite.
+
+**The ledger was never written.** The bundled `cordis.patch.yml` set `modes` and
+nothing else, so `kernel.ledger.path` was undefined and the engine ran with no
+ledger at all — every verdict was computed and dropped. The documentation had
+described the `~/.dsh/judge-ledger.ndjson` default from the start, so this was a
+released configuration that did not match its own description, and it made the
+advice "run in shadow and read the ledger" impossible to follow. The patch now
+ships the ledger path, which is what makes a point's promotion evidence-based
+rather than hopeful.
+
+**Admission could reduce a result to a bare pointer.** A 31 KB tool result the
+agent had asked for was judged chunk by chunk, nothing was kept, and the whole
+result was replaced by one line naming the spill file. Recovering it cost an
+extra read, and for a client with no filesystem — an MCP-only agent — the pointer
+leads nowhere it can follow. The policy now keeps the head when no chunk earns
+its place: the outcome degrades to `trimmed` (with `headKept: true` recorded in
+the ledger) instead of to nothing. The result of a tool the agent called on
+purpose is evidence, and evidence is not dropped on an inference.
+
 ## What is not verified here
 
 - **A full agent turn inside DeepSeek Harness** driving the plugin's extension
