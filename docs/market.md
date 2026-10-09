@@ -20,7 +20,7 @@ claimed to have done.
 | A description that is accurate about the code | ✅ see the draft entry; every claim is in the source |
 | `engines.dsh` or lockstep peers for the host badge | ✅ `"engines": { "dsh": ">=0.2.1-alpha.1 <0.3.0-0" }` |
 | Official `@deepseek-ai/*` packages as peers, not dependencies | ✅ none are imported at runtime, so none are declared |
-| npm publication (optional, recommended) | ⬜ prebuilt installs skip the build-script approval; CI publishing is ready in `release.yml`, waiting on the first manual release |
+| npm publication (optional, recommended) | ⬜ prebuilt installs skip the build-script approval; `release.yml` publishes on a tag via trusted publishing, or with an `NPM_TOKEN` secret for the bootstrap |
 
 ## One file is the whole submission
 
@@ -123,23 +123,32 @@ path is the only way in.
 
 ### If the very first release must also be automatic
 
-Create a granular access token with publish rights on npmjs.com and store it as a
-repository secret:
+npm refuses every publish that is neither 2FA-approved nor made with a granular
+token that explicitly bypasses 2FA — a plain `npm login` session satisfies
+neither, and the error says so:
 
-```sh
-gh secret set NPM_TOKEN      # paste the token at the prompt, never in a file
+```console
+npm error 403 Forbidden - PUT https://registry.npmjs.org/<package>
+npm error Two-factor authentication or granular access token with bypass 2fa
+npm error enabled is required to publish packages.
 ```
 
-…then give the publish step the token it expects:
+So publish the bootstrap with a granular token, and let the workflow do it:
 
-```yaml
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
+1. npmjs.com → **Access Tokens** → **Generate New Token** → **Granular Access
+   Token**. Name it, set an expiry, give it **Read and write** on all packages
+   (a token cannot be scoped to a package that does not exist yet), and enable
+   **bypass 2FA**.
+2. Store it as a repository secret — pasted at the prompt, never in a file:
 
-That path works for the first release and can be deleted the moment trusted
-publishing is configured — which is the point of doing it this way round.
+   ```sh
+   gh secret set NPM_TOKEN
+   ```
+3. Tag and push. `release.yml` picks the token up automatically; no edit needed.
+
+The same token can publish every later release, but it should not have to: once
+trusted publishing is configured, delete the secret and the releases carry
+provenance without a long-lived credential.
 
 ## Screenshots
 

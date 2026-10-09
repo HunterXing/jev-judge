@@ -3,16 +3,12 @@ name: Release
 # Publishing is a deliberate act: pushing a version tag is the whole trigger, and
 # nothing else in the repository can publish.
 #
-# Authentication is npm's trusted publishing (OIDC): no long-lived token exists
-# in this repository, and npm automatically attaches a provenance attestation to
-# every release published this way. The publisher is registered on npmjs.com
-# under the package's settings, and the workflow filename below has to match the
-# one registered there: `release.yml`.
-#
-# The first release of a package cannot use this path — a trusted publisher is
-# configured on the package's own settings page, which needs the package to
-# exist. Bootstrap it once (see docs/market.md), then this workflow owns every
-# release after it.
+# Two ways in, one step. With no secret, npm's trusted publishing exchanges
+# GitHub's OIDC identity for a short-lived credential and attaches a provenance
+# attestation by itself. With NPM_TOKEN set, that granular token is used instead
+# — which is what the *first* release needs, because a trusted publisher is
+# configured on the package's own settings page and a package that has never been
+# published has none (see docs/market.md).
 on:
   push:
     tags: ['v*']
@@ -37,7 +33,11 @@ jobs:
         with:
           # Trusted publishing needs Node >= 22.14 and npm >= 11.5.1.
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          # `registry-url` is deliberately absent: it writes
+          # `_authToken=${NODE_AUTH_TOKEN}` into .npmrc, and an empty variable in
+          # that line is exactly what the OIDC path does not need. npm already
+          # defaults to its own registry, and the token path below passes its
+          # credential as a flag rather than through a file.
 
       - name: Use the newest npm, which is what speaks OIDC
         run: npm install --global npm@latest
@@ -56,6 +56,18 @@ jobs:
       # push was allowed to break.
       - run: node --test
 
-      # No `--provenance` flag: npm adds the attestation itself for a trusted
-      # publish. No NODE_AUTH_TOKEN either — the OIDC exchange replaces it.
-      - run: npm publish
+      # npm requires either 2FA or a granular token with 2FA bypass enabled for
+      # every publish, and a logged-in CLI session satisfies neither. The flag
+      # form keeps whichever credential is in use out of .npmrc and out of the
+      # log.
+      - name: Publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "publishing with the repository's granular token"
+            npm publish --//registry.npmjs.org/:_authToken="$NPM_TOKEN"
+          else
+            echo "publishing with trusted publishing (OIDC)"
+            npm publish
+          fi
