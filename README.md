@@ -147,6 +147,10 @@ node --test              # 208 tests, no network
 node src/cli.js --help
 ```
 
+Releases are cut by pushing a version tag: `.github/workflows/release.yml`
+publishes to npm through trusted publishing (no token in the repository) after
+the same suite passes. See [`docs/market.md`](docs/market.md).
+
 ## License
 
 [MIT](LICENSE). TypeSafe, System One and Jev belong to their respective rights

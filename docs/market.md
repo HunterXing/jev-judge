@@ -20,7 +20,7 @@ claimed to have done.
 | A description that is accurate about the code | ✅ see the draft entry; every claim is in the source |
 | `engines.dsh` or lockstep peers for the host badge | ✅ `"engines": { "dsh": ">=0.2.1-alpha.1 <0.3.0-0" }` |
 | Official `@deepseek-ai/*` packages as peers, not dependencies | ✅ none are imported at runtime, so none are declared |
-| npm publication (optional, recommended) | ⬜ prebuilt installs skip the build-script approval |
+| npm publication (optional, recommended) | ⬜ prebuilt installs skip the build-script approval; CI publishing is ready in `release.yml`, waiting on the first manual release |
 
 ## One file is the whole submission
 
@@ -54,9 +54,8 @@ sent back.
 gh repo create HunterXing/jev-judge --public --source . --remote origin --push
 gh repo edit HunterXing/jev-judge --add-topic dsh-plugin
 
-# 2. Publish to npm (prebuilt installs need no build-script approval)
-npm login
-npm publish          # `prepack` is not needed: the package has no build step
+# 2. Bootstrap the first npm release, then let CI own every release after it
+npm login && npm publish   # see "Publishing with CI" below for why this one is manual
 
 # 3. Submit the entry (one file, at most three entries per PR)
 gh repo fork awesome-dsh-plugin/awesome-dsh-plugin --clone
@@ -71,6 +70,76 @@ gh pr create --title "Add HunterXing/jev-judge" --body "A judgment kernel for co
 
 After the merge the website rebuilds itself, and the plugin appears in
 **Settings → Plugin Market** inside DeepSeek Harness.
+
+## Publishing with CI
+
+`.github/workflows/release.yml` publishes on a version tag. There is no npm token
+in this repository, by design: the workflow authenticates with npm's
+[trusted publishing](https://docs.npmjs.com/trusted-publishers/) — GitHub's OIDC
+identity is exchanged for a short-lived credential that is scoped to this
+workflow and cannot be extracted or reused. npm also attaches a **provenance
+attestation** automatically on that path, so every release carries a signed
+statement of which commit and workflow built it.
+
+```sh
+git tag v0.1.1 && git push origin v0.1.1     # that is the whole release
+```
+
+The workflow checks that the tag matches `package.json`, runs the test suite the
+CI workflow runs, and only then publishes. It refuses to publish anything the
+push was allowed to break.
+
+### The first release is manual, on purpose
+
+A trusted publisher is configured on the **package's own settings page**, and a
+package that has never been published has no settings page. So the bootstrap is
+one manual command, after which CI owns every release:
+
+```sh
+npm login
+npm publish        # first release only
+```
+
+Then register the publisher at
+`https://www.npmjs.com/package/dsh-jev-judge/settings` → **Trusted Publisher** →
+GitHub Actions, with:
+
+| Field | Value |
+|---|---|
+| Organization or user | `HunterXing` |
+| Repository | `jev-judge` |
+| Workflow filename | `release.yml` (the filename, not the path) |
+| Allowed actions | `npm publish` (leave `npm stage publish` too if you want to try staged releases) |
+
+Requirements for that path, straight from npm's documentation: **npm CLI ≥ 11.5.1
+and Node ≥ 22.14** — the workflow installs the newest npm for exactly this reason
+— on GitHub-hosted runners. A new trusted publisher configuration must complete
+its first successful publish **within two days** of being created, or it expires
+and has to be recreated.
+
+Once the publisher works, npm's own advice is to restrict token access
+(`Settings → Publishing access → Require 2FA and disallow tokens`) so the OIDC
+path is the only way in.
+
+### If the very first release must also be automatic
+
+Create a granular access token with publish rights on npmjs.com and store it as a
+repository secret:
+
+```sh
+gh secret set NPM_TOKEN      # paste the token at the prompt, never in a file
+```
+
+…then give the publish step the token it expects:
+
+```yaml
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+That path works for the first release and can be deleted the moment trusted
+publishing is configured — which is the point of doing it this way round.
 
 ## Screenshots
 

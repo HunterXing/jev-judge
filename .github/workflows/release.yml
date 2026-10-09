@@ -1,0 +1,59 @@
+name: Release
+
+# Publishing is a deliberate act: pushing a version tag is the whole trigger, and
+# nothing else in the repository can publish.
+#
+# Authentication is npm's trusted publishing (OIDC): no long-lived token exists
+# in this repository, and npm automatically attaches a provenance attestation to
+# every release published this way. The publisher is registered on npmjs.com
+# under the package's settings, and the workflow filename below has to match the
+# one registered there: `release.yml`.
+#
+# The first release of a package cannot use this path — a trusted publisher is
+# configured on the package's own settings page, which needs the package to
+# exist. Bootstrap it once (see docs/market.md), then this workflow owns every
+# release after it.
+on:
+  push:
+    tags: ['v*']
+  # Lets the release be re-run from the Actions tab without moving the tag.
+  workflow_dispatch:
+
+permissions:
+  # The OIDC token npm exchanges for a short-lived publish credential.
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Trusted publishing needs Node >= 22.14 and npm >= 11.5.1.
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Use the newest npm, which is what speaks OIDC
+        run: npm install --global npm@latest
+
+      - name: Fail early when the tag and the manifest disagree
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+          echo "releasing $version"
+
+      # The same suite the CI workflow runs, so a tag cannot ship something the
+      # push was allowed to break.
+      - run: node --test
+
+      # No `--provenance` flag: npm adds the attestation itself for a trusted
+      # publish. No NODE_AUTH_TOKEN either — the OIDC exchange replaces it.
+      - run: npm publish

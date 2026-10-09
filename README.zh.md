@@ -118,6 +118,9 @@ node --test              # 208 项测试，不联网
 node src/cli.js --help
 ```
 
+发布靠打版本 tag：`.github/workflows/release.yml` 在测试通过后，经 npm 的
+trusted publishing（仓库里不放任何 token）自动发版，详见 [`docs/market.md`](docs/market.md)。
+
 ## 许可
 
 [MIT](LICENSE)。TypeSafe、System One 与 Jev 相关商标归各自权利人所有；本项目与它们无隶属关系。判定内核的设计改编自 [`mu`](https://github.com/qybaihe/mu)（MIT），详见 [ATTRIBUTION.md](ATTRIBUTION.md)。
