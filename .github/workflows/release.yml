@@ -16,7 +16,9 @@ name: Release
 on:
   push:
     tags: ['v*']
-  # Lets the release be re-run from the Actions tab without moving the tag.
+  # Lets a failed run be re-run from the Actions tab without moving the tag. A
+  # fresh manual dispatch runs against a branch, and the tag check below refuses
+  # it — publishing stays a deliberate act.
   workflow_dispatch:
 
 permissions:
