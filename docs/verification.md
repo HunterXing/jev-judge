@@ -248,6 +248,23 @@ its place: the outcome degrades to `trimmed` (with `headKept: true` recorded in
 the ledger) instead of to nothing. The result of a tool the agent called on
 purpose is evidence, and evidence is not dropped on an inference.
 
+### A third finding, from reading the ledger it had just written
+
+The ledger recorded the fix above — and in doing so held 2995 characters of tool
+output in its `outcome`. The module's own promise is that a record is
+"comparable and countable without becoming a second copy of the user's content",
+and hashing the *state* had only made that half true: `tool.admission`'s outcome
+carries the chunks it kept. With `recordState` off (the default), any string over
+200 characters is now cut to its head plus a length and a digest, at any depth,
+and the record says how many it elided. Turning `recordState` on still keeps
+everything, which is what that flag was always for.
+
+```console
+$ tail -1 ~/.dsh/judge-ledger.ndjson | jq '{point, mode, source, elidedStrings, outcome}'
+{"point":"tool.admission","mode":"active","source":"judge","elidedStrings":1,
+ "outcome":{"mode":"trimmed","content":"progress line… [2995 chars, sha256:…]","kept":1,"headKept":true}}
+```
+
 ## What is not verified here
 
 - **A full agent turn inside DeepSeek Harness** driving the plugin's extension

@@ -21,6 +21,17 @@ import { dirname } from 'node:path'
 export const DEFAULT_MAX_BYTES = 8 * 1024 * 1024
 
 /**
+ * How much of a string a record keeps when `recordState` is off.
+ *
+ * A decision's *outcome* can carry content — `tool.admission`'s outcome holds the
+ * chunks it kept — so "only the state is hashed" was only half true until this
+ * bound existed: a ledger that promises not to keep content must not keep it in
+ * the outcome either. The head of the string stays so the record still reads, and
+ * the length plus a digest stand in for the rest.
+ */
+export const MAX_STORED_STRING = 200
+
+/**
  * One decision, as the ledger stores it.
  *
  * @typedef {object} LedgerRecord
@@ -53,8 +64,31 @@ export function stateDigest(state) {
 }
 
 /**
+ * Shorten every string that is longer than the bound, keeping its head and a
+ * digest so a reader can tell that something was there and has not changed.
+ *
+ * @param {unknown} value
+ * @param {{elided: number}} counter
+ * @returns {unknown}
+ */
+function elideLongStrings(value, counter) {
+  if (typeof value === 'string') {
+    if (value.length <= MAX_STORED_STRING) return value
+    counter.elided += 1
+    return `${value.slice(0, MAX_STORED_STRING)}… [${value.length} chars, sha256:${stateDigest(value)}]`
+  }
+  if (value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map((item) => elideLongStrings(item, counter))
+  /** @type {Record<string, unknown>} */
+  const result = {}
+  for (const [key, item] of Object.entries(value)) result[key] = elideLongStrings(item, counter)
+  return result
+}
+
+/**
  * Apply the storage policy to a record: a judged state is kept only when the
- * deployment asked for it, and otherwise leaves a digest behind. Every ledger
+ * deployment asked for it, and otherwise leaves a digest behind — and with it,
+ * any long string anywhere in the record is elided the same way. Every ledger
  * goes through here, so an in-memory ledger used by tests and dry runs cannot
  * quietly keep content a file ledger would have dropped.
  *
@@ -64,8 +98,13 @@ export function stateDigest(state) {
  */
 export function toStoredRecord(record, options = {}) {
   const { state, ...rest } = record
-  if (state === undefined) return rest
-  return options.recordState ? { ...rest, state } : { ...rest, stateDigest: stateDigest(state) }
+  if (options.recordState) return state === undefined ? rest : { ...rest, state }
+
+  const counter = { elided: 0 }
+  const bounded = /** @type {Record<string, unknown>} */ (elideLongStrings(rest, counter))
+  if (state !== undefined) bounded.stateDigest = stateDigest(state)
+  if (counter.elided > 0) bounded.elidedStrings = counter.elided
+  return bounded
 }
 
 /**

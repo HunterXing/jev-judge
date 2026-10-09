@@ -122,6 +122,28 @@ test('the file ledger writes NDJSON that reads back in order', () => {
   }
 })
 
+test('bulk content in an outcome is elided, not stored, and says so', () => {
+  // `tool.admission`'s outcome carries the chunks it kept, so a ledger that only
+  // hashed the state would still have kept tool output. Long strings are cut to
+  // a head plus a digest, at any depth.
+  const ledger = new MemoryLedger()
+  const stored = ledger.append({
+    ...record,
+    outcome: { mode: 'trimmed', content: 'x'.repeat(5000), kept: 1 },
+  })
+  assert.ok(stored.outcome.content.length < 300)
+  assert.match(stored.outcome.content, /\[5000 chars, sha256:[0-9a-f]{16}\]$/)
+  assert.equal(stored.outcome.mode, 'trimmed', 'the rest of the outcome still reads')
+  assert.equal(stored.elidedStrings, 1)
+})
+
+test('recordState keeps the bulk it was asked to keep', () => {
+  const ledger = new MemoryLedger({ recordState: true })
+  const stored = ledger.append({ ...record, outcome: { content: 'x'.repeat(5000) } })
+  assert.equal(stored.outcome.content.length, 5000)
+  assert.equal(stored.elidedStrings, undefined)
+})
+
 test('a ledger file is private from the moment it exists', () => {
   const { dir, cleanup } = withTempDir()
   try {
