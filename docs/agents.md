@@ -9,8 +9,40 @@ Three adapters ship, and they cover the field:
 | Adapter | Reaches | What a verdict can do |
 |---|---|---|
 | DeepSeek Harness plugin (`dsh-jev-judge/host`) | DSH, through `dsh.bundle` | Register a tool; gate a tool call; rewrite a result; continue a turn |
-| MCP server (`jev-judge mcp`) | Any MCP client — OpenCode, Cursor, Claude Code, Codex, Cline | Expose three tools the model calls on purpose |
+| MCP server (`jev-judge mcp`) | Any MCP client — OpenCode, Cursor, Claude Code, Codex, Cline, MiniMax Code, Hermes | Expose three tools the model calls on purpose |
 | Command hooks (`jev-judge hook <dialect>`) | Claude Code, Codex, and DeepSeek Harness through its `dsh-hooks-claude-code` / `dsh-hooks-codex` bridges | Block a call, attach context, continue a stopped turn |
+
+## Will it work with the agent you use?
+
+Two capabilities decide it, and you can check either one in a minute:
+
+1. **Can it start an MCP stdio server?** Look for an MCP entry in its settings or
+   an `mcp` subcommand. That is the common case — if it is there, the three tools
+   appear, and nothing else is needed.
+2. **Does it run command hooks in the Claude Code dialect?** That is what reaches
+   the deeper points (result screening, turn nudges). DSH does this through its
+   own bridges; other clients usually do not.
+
+An agent with neither can still use the kernel the plain way, as long as the
+model can run a command: `jev-judge judge` asks one typed question and prints the
+probabilities, which is a tool call in any agent that has a shell.
+
+What none of this helps is an agent that cannot call a tool at all: the value is
+in the loop — a result, a tool call, a turn — and a chat-only assistant has none
+of those to attach to.
+
+| Agent | How it attaches | Verified |
+|---|---|---|
+| DeepSeek Harness | `dsh.bundle` plugin, all seven points | ✅ installed into a booted profile, and a live session's own tool result was screened by it |
+| Claude Code | command hooks + MCP | ✅ a real `claude -p` session ran the hooks and repeated the injected brief back |
+| Hermes | `hermes mcp add jev-judge --command node --args <path>/src/cli.js mcp` | ✅ connected, three tools discovered, saved to `~/.hermes/config.yaml` |
+| OpenCode | MCP server in `~/.config/opencode/opencode.json` | documented from that client's own config format |
+| Codex | MCP in `~/.codex/config.toml`; `~/.codex/hooks.json` for hooks | documented from that client's own config format |
+| MiniMax Code (`mcode`) | project `.mcp.json` with `mcpServers` — the same shape Claude Code uses | config file confirmed from its own bundle; handshake not run |
+| Cursor, Cline, anything else with MCP | the stdio server below | the wire is standard MCP |
+
+An agent whose name is not on this list is not a gap in the kernel: if it speaks
+MCP stdio, it is the same three lines of configuration.
 
 Everything needs the same private provider record. Validate it first — no network
 is used:
@@ -165,6 +197,39 @@ MCP, merged into `~/.config/opencode/opencode.json`:
 ```
 
 ---
+
+## MiniMax Code (`mcode`)
+
+MiniMax Code reads a **project** `.mcp.json` — the same file name and shape Claude
+Code uses, with an `mcpServers` map:
+
+```json
+{
+  "mcpServers": {
+    "jev-judge": {
+      "command": "node",
+      "args": ["/path/to/jev-judge/src/cli.js", "mcp"]
+    }
+  }
+}
+```
+
+Put it at the root of the project you run `mcode` in.
+
+## Hermes
+
+Hermes has an MCP client of its own:
+
+```sh
+hermes mcp add jev-judge --command node --args /path/to/jev-judge/src/cli.js mcp
+hermes mcp test jev-judge     # reports the three tools it discovered
+hermes mcp list
+hermes mcp remove jev-judge   # to undo
+```
+
+The `add` command connects first and asks whether to enable the tools it found;
+answer `y`, or pipe it: `printf 'y\n' | hermes mcp add …`. The configuration is
+saved to `~/.hermes/config.yaml`.
 
 ## Any other MCP client
 
