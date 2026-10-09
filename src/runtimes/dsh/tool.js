@@ -75,7 +75,9 @@ export const TOOL_OUTPUT_SCHEMA = {
         additionalProperties: true,
         properties: {
           id: { type: 'string' },
-          probability: { type: ['number', 'null'] },
+          // The harness's schema subset has no type arrays, so a field that can
+          // be null is expressed as an exact-one union.
+          probability: { oneOf: [{ type: 'number' }, { type: 'null' }] },
           selected: { type: 'boolean' },
           truncated: { type: 'boolean' },
         },

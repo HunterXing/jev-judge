@@ -397,8 +397,8 @@ test('a command that does not exist fails without running anything', async () =>
 test('every command documents itself', async () => {
   const { stdout, code } = await jev(['--help'])
   assert.equal(code, 0)
-  const names = [...stdout.matchAll(/^ {2}(\w+)\s+\S/gm)].map((match) => match[1])
-  assert.deepEqual(names.sort(), ['doctor', 'hook', 'judge', 'ledger', 'mcp', 'smoke', 'verify'])
+  const names = [...stdout.matchAll(/^ {2}([\w-]+)\s+\S/gm)].map((match) => match[1])
+  assert.deepEqual(names.sort(), ['doctor', 'hook', 'install-skill', 'judge', 'ledger', 'mcp', 'smoke', 'verify'])
 
   for (const name of names) {
     const help = await jev([name, '--help'])

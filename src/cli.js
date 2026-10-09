@@ -13,6 +13,7 @@
 import { PACKAGE_NAME, VERSION } from './meta.js'
 import { command as doctor } from './commands/doctor.js'
 import { command as hook } from './commands/hook.js'
+import { command as installSkill } from './commands/install-skill.js'
 import { command as judge } from './commands/judge.js'
 import { command as ledger } from './commands/ledger.js'
 import { command as mcp } from './commands/mcp.js'
@@ -29,7 +30,7 @@ import { UsageError, out } from './commands/support.js'
  */
 
 /** @type {Record<string, Command>} */
-const COMMANDS = { verify, doctor, judge, ledger, smoke, mcp, hook }
+const COMMANDS = { verify, doctor, judge, ledger, smoke, mcp, hook, 'install-skill': installSkill }
 
 const USAGE = `${PACKAGE_NAME} ${VERSION}
 
@@ -41,7 +42,7 @@ Options:
 
 Commands:
 ${Object.entries(COMMANDS)
-  .map(([name, command]) => `  ${name.padEnd(12)}${command.summary}`)
+  .map(([name, command]) => `  ${name.padEnd(14)}${command.summary}`)
   .join('\n')}
 
 Run "jev-judge <command> --help" for one command's options.`
