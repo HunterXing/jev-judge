@@ -189,6 +189,17 @@ test('createLedger only builds one when a path is configured', () => {
 })
 
 test('a ledger that cannot be written never breaks a decision', () => {
-  const ledger = new FileLedger({ path: '/proc/definitely/not/writable/ledger.ndjson' })
-  assert.equal(ledger.append(record).point, 'tool.admission')
+  const { dir, cleanup } = withTempDir()
+  try {
+    // A path *inside a file*: no platform can create a directory under one, so
+    // the write fails everywhere for the same reason. An OS-specific path such
+    // as /proc/... looked equivalent on macOS and hung the Linux runner.
+    const notADirectory = join(dir, 'not-a-directory')
+    writeFileSync(notADirectory, '')
+    const ledger = new FileLedger({ path: join(notADirectory, 'ledger.ndjson') })
+    assert.equal(ledger.append(record).point, 'tool.admission')
+    assert.equal(ledger.count(), 0, 'nothing was written, and nothing was thrown')
+  } finally {
+    cleanup()
+  }
 })
