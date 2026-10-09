@@ -17,7 +17,7 @@
 import { VERSION } from '../../meta.js'
 import { defineDecision } from '../../kernel/decision.js'
 import { isJudgeError } from '../../kernel/errors.js'
-import { judgeItems } from '../../decisions/judge-items.js'
+import { maxItemsFrom, runItemsJudgment } from '../../decisions/judge-items.js'
 import { createJudgeRuntime } from '../../kernel/registry.js'
 
 /** The protocol revision used when a client does not name one. */
@@ -185,17 +185,12 @@ export function createMcpServer(options = {}) {
         return toolResult({ unavailable: true, note: unavailableNote(runtime.problems), selected: [], items: [] })
       }
 
-      const decision = await judge(judgeItems, {
-        task: typeof args.task === 'string' ? args.task : '',
-        question,
-        items,
+      const outcome = await runItemsJudgment({
+        engine: runtime.engine,
+        input: { task: typeof args.task === 'string' ? args.task : '', question, items },
+        maxItems: maxItemsFrom(runtime.kernel.options),
       })
-      return toolResult({
-        ...decision.outcome,
-        ...(decision.reason ? { reason: decision.reason } : {}),
-        latencyMs: decision.latencyMs,
-        ...(decision.tiers ? { tiers: decision.tiers.map((tier) => tier.id) } : {}),
-      })
+      return toolResult(outcome)
     },
 
     async judge_ask(args) {

@@ -12,8 +12,17 @@
 
 import { defineDecision } from '../kernel/decision.js'
 
-/** How many items one call may carry. Beyond this, the caller must chunk. */
-export const MAX_ITEMS = 512
+/**
+ * How many items one request may carry. A larger list is split into this many
+ * per call.
+ *
+ * The limit is the provider's, not ours: the System One endpoint this package
+ * was verified against answers a 21st question with
+ * `at most 20 questions per call`. A deployment whose judge allows more raises
+ * it in `options["judge.items"].maxItems` rather than being held to the smallest
+ * provider in the world.
+ */
+export const MAX_ITEMS = 20
 
 /** The judge reads fastest from short fields; longer items are truncated. */
 export const MAX_ITEM_CHARS = 2000
@@ -83,15 +92,16 @@ export const judgeItems = defineDecision({
 
   questionsFor: (input) => {
     const { items } = prepareItems(input.items ?? [])
-    /** @type {Record<string, {type: string, instructions: string, criteria?: unknown}>} */
+    /** @type {Record<string, {type: string, instructions: string}>} */
     const questions = {}
     for (const item of items) {
-      const question = {
+      // The predicate and its examples live once in the shared state; repeating
+      // them per item is the difference between a request a small judge can take
+      // and a 400 from the provider when a list is long.
+      questions[item.id] = {
         type: 'boolean',
-        instructions: `Does item \`items.${item.id}\` satisfy this condition: ${input.question.instructions}`,
+        instructions: `Does \`items.${item.id}\` satisfy the condition in \`question\`?`,
       }
-      if (input.question.criteria !== undefined) question.criteria = input.question.criteria
-      questions[item.id] = question
     }
     return questions
   },
@@ -104,6 +114,7 @@ export const judgeItems = defineDecision({
     return {
       ...(input.task ? { task: input.task } : {}),
       question: input.question.instructions,
+      ...(input.question.criteria ? { examples: input.question.criteria } : {}),
       items: state,
     }
   },
@@ -132,3 +143,76 @@ export const judgeItems = defineDecision({
 })
 
 export default judgeItems
+
+/**
+ * The per-call item limit a deployment configured, or the built-in default.
+ *
+ * @param {Record<string, unknown> | undefined} options The kernel's `options`.
+ * @returns {number}
+ */
+export function maxItemsFrom(options) {
+  const configured = options?.['judge.items']?.maxItems ?? options?.judgeItems?.maxItems
+  return Number.isFinite(configured) && configured > 0 ? Number(configured) : MAX_ITEMS
+}
+
+/**
+ * Split items into request-sized groups.
+ *
+ * @param {{id?: string, text: string}[]} items
+ * @param {{maxItems?: number}} [options]
+ * @returns {{id?: string, text: string}[][]}
+ */
+export function chunkItems(items, options = {}) {
+  const maxItems = Math.max(1, Math.floor(options.maxItems ?? MAX_ITEMS))
+  const groups = []
+  for (let index = 0; index < items.length; index += maxItems) {
+    groups.push(items.slice(index, index + maxItems))
+  }
+  return groups
+}
+
+/**
+ * Judge a list of items, splitting it into as many requests as the list needs
+ * and merging the verdicts into one outcome.
+ *
+ * A judge reads a bounded window, so a list longer than one request is the
+ * caller's problem to route and not the provider's to absorb: sending 1200 items
+ * once is how a 400 arrives instead of a verdict.
+ *
+ * @param {{engine: object, input: {question: object, items: object[], task?: string}, mode?: string, maxItems?: number}} request
+ * @returns {Promise<{items: object[], selected: string[], batches: number, latencyMs: number, unavailable?: true, reason?: string}>}
+ */
+export async function runItemsJudgment({ engine, input, mode = 'active', maxItems }) {
+  const items = Array.isArray(input.items) ? input.items : []
+  const groups = chunkItems(items, { maxItems })
+  if (groups.length === 0) {
+    return { items: [], selected: [], batches: 0, latencyMs: 0 }
+  }
+
+  const merged = []
+  const selected = []
+  let latencyMs = 0
+  let reason
+  for (const group of groups) {
+    const decision = await engine.decide(
+      judgeItems,
+      { ...input, items: group },
+      { mode },
+    )
+    latencyMs += decision.latencyMs ?? 0
+    if (decision.outcome?.unavailable) {
+      return { ...decision.outcome, batches: groups.length, latencyMs, ...(decision.reason ? { reason: decision.reason } : {}) }
+    }
+    if (decision.source !== 'judge' && decision.reason) reason = decision.reason
+    merged.push(...(decision.outcome?.items ?? []))
+    selected.push(...(decision.outcome?.selected ?? []))
+  }
+
+  return {
+    items: merged,
+    selected,
+    batches: groups.length,
+    latencyMs,
+    ...(reason ? { reason } : {}),
+  }
+}

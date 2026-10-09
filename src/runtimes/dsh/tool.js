@@ -8,7 +8,7 @@
  * @module dsh-jev-judge/runtimes/dsh/tool
  */
 
-import { judgeItems, prepareItems } from '../../decisions/judge-items.js'
+import { prepareItems, maxItemsFrom, runItemsJudgment } from '../../decisions/judge-items.js'
 
 /** The tool name the model calls. */
 export const TOOL_NAME = 'judge_items'
@@ -125,22 +125,17 @@ export function createJudgeItemsTool(runtime) {
       }
 
       // A call the model made on purpose is a request to judge now, whatever the
-      // configured mode says; every other point still earns its mode first.
-      const decision = await runtime.engine.decide(
-        judgeItems,
-        {
-          task: args.task ?? '',
-          question: args.question,
-          items: args.items,
-        },
-        { mode: 'active' },
-      )
+      // configured mode says; every other point still earns its mode first. A
+      // list longer than one request is split, and the verdicts are merged.
+      const outcome = await runItemsJudgment({
+        engine: runtime.engine,
+        input: { task: args.task ?? '', question: args.question, items: args.items },
+        maxItems: maxItemsFrom(runtime.kernel.options),
+      })
 
       const prepared = prepareItems(args.items ?? [])
       return {
-        ...decision.outcome,
-        ...(decision.reason ? { reason: decision.reason } : {}),
-        latencyMs: decision.latencyMs,
+        ...outcome,
         ...(prepared.truncated > 0
           ? { note: `${prepared.truncated} item(s) were truncated before judging.` }
           : {}),

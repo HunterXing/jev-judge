@@ -10,7 +10,16 @@
  * @module dsh-jev-judge/decisions
  */
 
-export { judgeItems, MAX_ITEMS, MAX_ITEM_CHARS, SELECT_THRESHOLD, prepareItems } from './judge-items.js'
+export {
+  judgeItems,
+  MAX_ITEMS,
+  MAX_ITEM_CHARS,
+  SELECT_THRESHOLD,
+  chunkItems,
+  maxItemsFrom,
+  prepareItems,
+  runItemsJudgment,
+} from './judge-items.js'
 export {
   MIN_JUDGED_CHARS,
   MAX_CHUNKS,

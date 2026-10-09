@@ -168,16 +168,23 @@ test('a fallback that throws still returns a value', async () => {
 })
 
 test('a slow judge spends the budget, not the turn', async () => {
-  const slow = new MockJudge(
-    () => new Promise((resolve) => setTimeout(() => resolve({}), 200)),
-    { id: 'slow' },
-  )
+  // Wall-clock assertions are flaky under a parallel test runner, so the check
+  // is causal: if the decision had waited for the judge, the judge would have
+  // finished before the decision returned.
+  let judgeFinished = false
+  const slow = new MockJudge(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    judgeFinished = true
+    return {}
+  }, { id: 'slow' })
+
   const engine = createEngine({ judges: { slow }, modes: { default: 'active' }, timeoutMs: 20 })
-  const startedAt = Date.now()
   const decision = await engine.decide(keepDecision(), { task: 't', passage: 'p' })
+
   assert.equal(decision.outcome, 'drop')
   assert.match(decision.reason, /timeout after 20ms/)
-  assert.ok(Date.now() - startedAt < 150, 'the decision must not wait for the judge')
+  assert.equal(judgeFinished, false, 'the decision must not wait for the judge')
+  assert.equal(engine.stats().failures, 1)
 })
 
 test('the ledger keeps the verdict, the answers and never the raw state by default', async () => {

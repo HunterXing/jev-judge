@@ -11,3 +11,6 @@ npm-debug.log*
 .env
 .env.*
 config.local.json
+
+# This package has no dependencies, so a lockfile from a test run is noise.
+pnpm-lock.yaml

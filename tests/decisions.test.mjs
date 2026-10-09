@@ -13,6 +13,8 @@ import { test } from 'node:test'
 import {
   DECISIONS,
   DECISION_IDS,
+  chunkItems,
+  maxItemsFrom,
   judgeItems,
   looksRisky,
   memoryCapture,
@@ -94,6 +96,14 @@ test('items are bounded before they are sent', () => {
 
   const empty = prepareItems([{ text: '' }, { text: 'real' }])
   assert.deepEqual(empty.items.map((item) => item.text), ['real'])
+})
+
+test('a list longer than the provider allows is split, not sent', () => {
+  const items = Array.from({ length: 65 }, (_, index) => ({ id: `l${index}`, text: 'x' }))
+  assert.equal(chunkItems(items).length, 4, '65 items at the default limit of 20')
+  assert.equal(chunkItems(items, { maxItems: 100 }).length, 1)
+  assert.equal(maxItemsFrom({ 'judge.items': { maxItems: 50 } }), 50)
+  assert.equal(maxItemsFrom(undefined), 20)
 })
 
 test('judge.items asks one question per item and selects the matches', async () => {

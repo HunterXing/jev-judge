@@ -242,12 +242,18 @@ export function createEngine(options = {}) {
   /**
    * The budget for one point, from its latency class unless configured.
    *
+   * A spent budget is a fallback, which for most points means the model reads
+   * what it would have read anyway — so the number is generous on purpose. The
+   * real provider this package was verified against answers a warm question in
+   * well under a second and a cold one in about three, and a 3 s default turned
+   * the first call of a process into "no verdict".
+   *
    * @param {DecisionSpec} spec
    * @returns {number}
    */
   function budgetFor(spec) {
     if (Number.isFinite(options.timeoutMs)) return options.timeoutMs
-    return spec.latency === 'inline' ? 3000 : 10_000
+    return spec.latency === 'inline' ? 8000 : 15_000
   }
 
   /**
