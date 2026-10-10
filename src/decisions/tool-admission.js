@@ -8,7 +8,8 @@
  * the full text.
  *
  * Short output is never sent: the cost of a call is only worth paying when the
- * chunking is what saves the tokens.
+ * chunking is what saves the tokens. Neither is output the agent asked for the
+ * shape of — see `DEFAULT_TOOL_NAMES` for where that line is drawn.
  *
  * @module dsh-jev-judge/decisions/tool-admission
  */
@@ -28,14 +29,67 @@ export const MAX_CHUNKS = 12
 export const KEEP_THRESHOLD = 0.8
 
 /**
+ * The tools whose output is *scanned* rather than worked on.
+ *
+ * A result whose shape the agent chose — a file it decided to read, a pattern it
+ * decided to search for — is evidence, and thinning it costs a re-read that may
+ * come back thinned differently. What is worth screening is output whose size
+ * nobody chose: a log, a dump, a listing, a page.
+ *
+ * Against 55 days of real sessions, the results over the threshold that came
+ * from deliberate reads were 100% dense (a unique line on every line) and held
+ * half of every byte over the threshold, while `cordis_inspect_query` was 90%
+ * repeated noise. This is the noisy side of that line. Anything not on it is
+ * passed through untouched.
+ */
+export const DEFAULT_TOOL_NAMES = Object.freeze([
+  'bash',
+  'cordis_inspect_*',
+  'mcp__*',
+  'web_fetch',
+  'webfetch',
+  'web_search',
+  'websearch',
+  'fetch',
+])
+
+/**
+ * Whether a tool's output is one this point screens.
+ *
+ * Names are compared without case, because the same tool is spelled differently
+ * per dialect (`bash` in the harness, `Bash` in Claude Code). A pattern matches
+ * the whole name, or its prefix when it ends in `*`; `web_fetch` and `webfetch`
+ * are both listed since neither spelling normalizes into the other. An unnamed
+ * tool is never screened: skipping a judgment costs nothing, while screening
+ * something that was wanted costs the evidence.
+ *
+ * @param {string | undefined} tool
+ * @param {readonly string[]} [patterns]
+ * @returns {boolean}
+ */
+export function matchesTool(tool, patterns = DEFAULT_TOOL_NAMES) {
+  if (typeof tool !== 'string' || tool === '') return false
+  const name = tool.toLowerCase()
+  return patterns.some((pattern) => {
+    if (typeof pattern !== 'string') return false
+    const wanted = pattern.toLowerCase()
+    return wanted.endsWith('*') ? name.startsWith(wanted.slice(0, -1)) : name === wanted
+  })
+}
+
+/**
  * Whether an output is worth judging at all.
  *
+ * Two things have to hold: the output is long enough for the chunking to be what
+ * saves the tokens, and it came from a tool whose output is scanned.
+ *
  * @param {string} output
- * @param {{minChars?: number}} [options]
+ * @param {{minChars?: number, tool?: string, toolNames?: readonly string[]}} [options]
  * @returns {boolean}
  */
 export function shouldJudge(output, options = {}) {
-  return String(output ?? '').length >= (options.minChars ?? MIN_JUDGED_CHARS)
+  if (String(output ?? '').length < (options.minChars ?? MIN_JUDGED_CHARS)) return false
+  return matchesTool(options.tool, options.toolNames ?? DEFAULT_TOOL_NAMES)
 }
 
 /**

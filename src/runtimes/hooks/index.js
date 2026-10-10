@@ -251,9 +251,10 @@ async function postToolUse(payload, runtime, where) {
   const parts = note === '' ? [] : [screenedBody]
   const body = screenedBody
 
-  // Output small enough to have cost nothing to read is not worth a judge: the
-  // point exists to save tokens, and this output has none to save.
-  if (!shouldJudge(body)) return reply(parts)
+  // Output small enough to have cost nothing to read is not worth a judge, and
+  // neither is a tool whose output the agent asked for the shape of: the point
+  // exists to save tokens, and neither of those has any to save.
+  if (!shouldJudge(body, { tool })) return reply(parts)
 
   const admission = await runtime.kernel.engine.decide(
     toolAdmission,

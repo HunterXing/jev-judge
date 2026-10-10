@@ -11,14 +11,14 @@ where real use found something the unit tests could not.
 | Machine | macOS, Node `v22.22.3` |
 | DeepSeek Harness | `0.2.1-alpha.1` (source checkout, and the packaged desktop runtime) |
 | Judge provider | a hosted System One endpoint, model `jev` — the private record at `$HOME/.config/typesafe-ai-jev-skill.json`. The provider's identity is elided in this record; everything else is as it ran. |
-| Test suite | `node --test` — 213 tests, no network, no key |
+| Test suite | `node --test` — 217 tests, no network, no key |
 
 ## Offline: the test suite
 
 ```console
 $ node --test
-# tests 213
-# pass 213
+# tests 217
+# pass 217
 # fail 0
 ```
 
@@ -305,6 +305,71 @@ $ node host-probe.mjs <the same tree with the fix>
 结果被改写          : true（原文 4334 字符 → 保留 1344 字符）
 判定后账本行数      : 2  ✅ 新增了记录
 新记录              : {"point":"tool.admission","mode":"active","source":"judge","outcomeMode":"trimmed","latencyMs":1675}
+```
+
+## R9 — is the point worth having? Answering with 55 days of real sessions
+
+R8 ended with a working ledger, which raised the question a working ledger is for:
+is `tool.admission` earning its place? The measurement used the sessions on this
+machine rather than an argument. 89 session files, both storage formats (the v4
+files were missed on the first pass and are 3 of the last 4 weeks), 11,831 tool
+results, 16.6 MB of them.
+
+| | |
+|---|---|
+| over the 4,000-character threshold | **964 calls (8.1%)** |
+| share of all tool-output bytes they carry | **57.5% (9.6 MB)** |
+| of those bytes, repeated noise (unique-line ratio < 0.35) | **7.7%** |
+| of those bytes, dense content (> 0.6) | **91.0%** |
+
+By tool, the bytes over the threshold: `read` 520 calls / 4.68 MB (100% dense),
+`bash` 286 / 2.40 MB, `cordis_inspect_query` 18 / 0.67 MB (**90% repeated
+noise**), then snapshots, `grep`, `skill`. So the point was aiming at the 7.7%,
+and acting on the 91% — the output the agent had asked for by shape.
+
+Three real file reads, judged by the real provider with the task they were read
+under:
+
+| file | read | handed back |
+|---|---|---|
+| `src/kernel/decision.js` | 24,859 | 11,954 (48%) |
+| `src/kernel/config.js` | 17,616 | 2,995 (17%) |
+| `tests/cli-commands.test.mjs` | 16,141 | 2,972 (18%) |
+| | **58,616** | **17,921 (31%)** |
+
+Two of the three came back as their head chunk alone — the judge had found nothing
+relevant, so the head floor fired. Worse, `decision.js` was judged **twice under
+the same task and answered differently**: 2,962 characters once, 11,954 the next
+time. A re-read is therefore not a reliable way to recover what was dropped.
+
+That is the asymmetry: a skipped judgment costs nothing, while screening the wrong
+thing costs a re-read that may not come back — or an edit made against a file the
+model never saw whole.
+
+**The fix** is a scope, not a smarter judge. `tool.admission` now acts only on the
+tools whose output is *scanned* rather than worked on (`DEFAULT_TOOL_NAMES`: the
+shell, the introspection dumps, MCP and web results). That reaches 4.3 MB of the
+9.6 MB over the threshold and leaves the 5.3 MB the agent asked for — the reads,
+the searches, the skill docs — alone. Names are compared without case, because
+the same tool is spelled `bash` in the harness and `Bash` in Claude Code: a
+case-sensitive first cut silently disabled the whole point for the hooks adapter,
+which the suite caught. A deployment can restate the list:
+
+```json
+{ "options": { "admission": { "toolNames": ["bash", "mcp__*"] } } }
+```
+
+The same probe as R8, against the packed 0.1.4 artifact:
+
+```console
+$ node host-probe.mjs dsh-jev-judge-0.1.4 read
+结果被改写          : false（原文 4334 字符 → 保留 4334 字符）
+判定后账本行数      : 16  ❌ 没有新增
+
+$ node host-probe.mjs dsh-jev-judge-0.1.4 bash
+结果被改写          : true（原文 4334 字符 → 保留 1344 字符）
+判定后账本行数      : 17  ✅ 新增了记录
+新记录              : {"point":"tool.admission","mode":"active","source":"judge","outcomeMode":"trimmed","latencyMs":2239}
 ```
 
 ## What is not verified here

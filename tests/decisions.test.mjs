@@ -147,9 +147,44 @@ test('judge.items in shadow records the verdict without acting on it', async () 
 // ── tool.admission ───────────────────────────────────────────────────────────
 
 test('short output is never worth a call', () => {
-  assert.equal(shouldJudge('short'), false)
-  assert.equal(shouldJudge('x'.repeat(5000)), true)
-  assert.equal(shouldJudge('x'.repeat(50), { minChars: 10 }), true)
+  assert.equal(shouldJudge('short', { tool: 'bash' }), false)
+  assert.equal(shouldJudge('x'.repeat(5000), { tool: 'bash' }), true)
+  assert.equal(shouldJudge('x'.repeat(50), { tool: 'bash', minChars: 10 }), true)
+})
+
+test('only the tools whose output is scanned are judged', () => {
+  const long = 'x'.repeat(5000)
+
+  // Screened: the size of this output was nobody's choice.
+  for (const tool of ['bash', 'cordis_inspect_query', 'mcp__chrome-devtools__take_snapshot', 'web_search', 'fetch']) {
+    assert.equal(shouldJudge(long, { tool }), true, tool)
+  }
+
+  // Passed through: the agent asked for this shape, and thinning it costs a
+  // re-read that may come back thinned differently.
+  for (const tool of ['read', 'read_file', 'grep', 'glob', 'skill', 'write', 'edit', 'plugin_manager']) {
+    assert.equal(shouldJudge(long, { tool }), false, tool)
+  }
+
+  // An unnamed tool is not screened either: a skipped judgment costs nothing.
+  assert.equal(shouldJudge(long), false)
+  assert.equal(shouldJudge(long, { tool: '' }), false)
+
+  // The same tool is spelled per dialect: `bash` in the harness, `Bash` in
+  // Claude Code. A case difference must not quietly disable the point.
+  assert.equal(shouldJudge(long, { tool: 'Bash' }), true)
+  assert.equal(shouldJudge(long, { tool: 'WebFetch' }), true)
+  assert.equal(shouldJudge(long, { tool: 'Read' }), false)
+})
+
+test('the screened tool list is a setting, not a law', () => {
+  const long = 'x'.repeat(5000)
+
+  assert.equal(shouldJudge(long, { tool: 'read', toolNames: ['read'] }), true)
+  assert.equal(shouldJudge(long, { tool: 'bash', toolNames: ['read'] }), false)
+  // A pattern ending in `*` matches by prefix; anything else matches exactly.
+  assert.equal(shouldJudge(long, { tool: 'mcp__crg__query', toolNames: ['mcp__*'] }), true)
+  assert.equal(shouldJudge(long, { tool: 'mcp', toolNames: ['mcp__*'] }), false)
 })
 
 test('chunking covers the whole output within the chunk budget', () => {

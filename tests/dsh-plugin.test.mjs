@@ -317,6 +317,46 @@ test('a result another plugin blocked is never rewritten', async () => {
   )
 })
 
+test('a long result from a scanned tool is trimmed', async () => {
+  await withHost(
+    async ({ ctx }) => {
+      const agent = await claimTurn(ctx)
+      const text = Array.from({ length: 400 }, (_, i) => `module build ${i}: compiled`).join('\n')
+      const [decision] = await ctx.fire('tools/post-execute', {
+        name: 'bash',
+        arguments: { command: 'run the build' },
+        agent,
+        signal: new AbortController().signal,
+      }, { isError: false, value: text, content: [{ type: 'text', text }] })
+
+      const rendered = decision.content.map((block) => block.text).join('\n')
+      assert.match(rendered, /\[jev-judge\] Kept/, 'the scanned output is trimmed')
+      assert.match(rendered, /module build 0:/, 'what was kept is handed over')
+      assert.ok(!rendered.includes('module build 399:'), 'what was dropped is not')
+    },
+    { config: ACTIVE, answers: { c0: 0.99 } },
+  )
+})
+
+test('a result the agent asked for by shape is never trimmed', async () => {
+  await withHost(
+    async ({ ctx }) => {
+      const agent = await claimTurn(ctx)
+      const text = Array.from({ length: 400 }, (_, i) => `const line${i} = ${i}`).join('\n')
+      // The judge is told every chunk is irrelevant; the point must not care.
+      const [decision] = await ctx.fire('tools/post-execute', {
+        name: 'read',
+        arguments: { file_path: '/tmp/big.js' },
+        agent,
+        signal: new AbortController().signal,
+      }, { isError: false, value: text, content: [{ type: 'text', text }] })
+
+      assert.deepEqual(decision, { kind: 'accept' }, 'the file the agent chose is left alone')
+    },
+    { config: ACTIVE, answers: { c0: 0.01, c1: 0.01, c2: 0.01, c3: 0.01 } },
+  )
+})
+
 // ── the turn checks ──────────────────────────────────────────────────────────
 
 test('a turn that stopped short is sent back to work once', async () => {

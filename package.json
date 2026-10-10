@@ -1,6 +1,6 @@
 {
   "name": "dsh-jev-judge",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A judgment kernel for coding agents: bounded questions a small Jev judge answers, so the main model keeps its context and tokens for real reasoning.",
   "type": "module",
   "license": "MIT",

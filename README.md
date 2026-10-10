@@ -113,6 +113,28 @@ Kernel settings, all optional, live in `~/.config/jev-judge/kernel.json`:
 
 `jev-judge ledger` reads the ledger; `--json` prints the records as stored.
 
+### Admission only thins what is *scanned*
+
+`tool.admission` acts by default only on output whose size nobody chose: a log, a
+dump, a listing, a page. The default list:
+
+```json
+["bash", "cordis_inspect_*", "mcp__*", "web_fetch", "webfetch", "web_search", "websearch", "fetch"]
+```
+
+`read`, `grep`, `glob`, `skill`, `write`, `edit` — the tools whose *shape* the
+agent asked for — pass through whole. Thinning one of those saves tokens and
+buys a re-read that may come back thinned differently. Names match without case
+(`bash` and Claude Code's `Bash` are the same tool), and a trailing `*` matches a
+prefix.
+
+```json
+{ "options": { "admission": { "toolNames": ["bash", "mcp__*"], "minChars": 4000 } } }
+```
+
+In DeepSeek Harness this goes in the plugin row's `config.options`, i.e. the
+profile's `cordis.patch.yml`.
+
 ## Design rules
 
 - **A verdict never decides that the agent should ask the user something.** It
@@ -143,7 +165,7 @@ No runtime dependencies and no build step, on purpose: the package loads straigh
 from a checkout, so `dsh plugin add <path>` needs no build-script approval.
 
 ```sh
-node --test              # 213 tests, no network
+node --test              # 217 tests, no network
 node src/cli.js --help
 ```
 

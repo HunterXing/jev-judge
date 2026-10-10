@@ -92,6 +92,22 @@ jev-judge doctor    # 实际会发生什么：judge、模式、账本
 
 `jev-judge ledger` 读账本，`--json` 输出原始记录。`options["judge.items"].maxItems` 是每次请求的条数上限——真实 Provider 明确限制"每次调用最多 20 个问题"，超出会被自动拆成多次请求。
 
+### 准入只裁"扫一眼"型的输出
+
+`tool.admission` 默认只对**尺寸不是由你决定**的输出动手：长日志、转储、清单、外部页面。默认名单：
+
+```json
+["bash", "cordis_inspect_*", "mcp__*", "web_fetch", "webfetch", "web_search", "websearch", "fetch"]
+```
+
+`read`、`grep`、`glob`、`skill`、`write`、`edit` 这类**你主动要的内容**一律原样放行——裁它们省下的是 token，赔进去的是一次重读，而重读可能又被裁成另一个样子。工具名按大小写不敏感匹配（`bash` / Claude Code 的 `Bash` 都算），结尾带 `*` 表示前缀匹配。
+
+```json
+{ "options": { "admission": { "toolNames": ["bash", "mcp__*"], "minChars": 4000 } } }
+```
+
+在 DSH 里，这段写进插件行的 `config.options`（即 profile 的 `cordis.patch.yml`）。
+
 ## 设计铁律
 
 - **判定永远不会决定"要让 Agent 去问用户"。** 它只改变模型看到什么，或者要不要继续干。
@@ -114,7 +130,7 @@ jev-judge doctor    # 实际会发生什么：judge、模式、账本
 刻意做到零运行时依赖、无构建步骤：包可以从 checkout 直接加载，`dsh plugin add <path>` 不需要任何构建脚本授权。
 
 ```sh
-node --test              # 213 项测试，不联网
+node --test              # 217 项测试，不联网
 node src/cli.js --help
 ```
 

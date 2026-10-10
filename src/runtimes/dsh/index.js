@@ -157,7 +157,7 @@ export function apply(ctx, config) {
         }
       }
 
-      if (shouldJudge(text, settings.admissionMinChars === undefined ? {} : { minChars: settings.admissionMinChars })) {
+      if (shouldJudge(text, admissionOptions(settings, exec.name))) {
         const state = turns.get(String(exec.agent?.id ?? 'unknown'))
         const spillPath = writeSpill(original, String(exec.name))
         const admitted = await runtime.engine.decide(toolAdmission, {
@@ -355,13 +355,15 @@ function writeSpill(text, toolName) {
  *
  * @param {unknown} config
  * @param {object} ctx
- * @returns {{overrides: object, admissionMinChars: number | undefined}}
+ * @returns {{overrides: object, admissionMinChars: number | undefined, admissionToolNames: readonly string[] | undefined}}
  */
 function readSettings(config, ctx) {
-  if (config === undefined || config === null) return { overrides: {}, admissionMinChars: undefined }
+  if (config === undefined || config === null) {
+    return { overrides: {}, admissionMinChars: undefined, admissionToolNames: undefined }
+  }
   if (typeof config !== 'object' || Array.isArray(config)) {
     warn(ctx, 'plugin config must be an object; using defaults')
-    return { overrides: {}, admissionMinChars: undefined }
+    return { overrides: {}, admissionMinChars: undefined, admissionToolNames: undefined }
   }
 
   const modes = config.modes
@@ -379,7 +381,14 @@ function readSettings(config, ctx) {
     warn(ctx, '`judges` must be an object; ignored')
   }
 
-  const admissionMinChars = plainObject(options)?.admission?.minChars
+  const admission = plainObject(options) ? options.admission : undefined
+  const admissionMinChars = plainObject(admission) ? admission.minChars : undefined
+  const declaredToolNames = plainObject(admission) ? admission.toolNames : undefined
+  if (declaredToolNames !== undefined) {
+    const usable =
+      Array.isArray(declaredToolNames) && declaredToolNames.every((name) => typeof name === 'string')
+    if (!usable) warn(ctx, '`options.admission.toolNames` must be an array of tool names; ignored')
+  }
 
   return {
     overrides: {
@@ -389,6 +398,26 @@ function readSettings(config, ctx) {
       ...(plainObject(options) ? { options } : {}),
     },
     admissionMinChars: Number.isFinite(admissionMinChars) ? Number(admissionMinChars) : undefined,
+    admissionToolNames:
+      Array.isArray(declaredToolNames) && declaredToolNames.every((name) => typeof name === 'string')
+        ? declaredToolNames
+        : undefined,
+  }
+}
+
+/**
+ * The admission options for one tool result: the row's settings where it states
+ * them, the point's own defaults everywhere else.
+ *
+ * @param {{admissionMinChars?: number, admissionToolNames?: readonly string[]}} settings
+ * @param {unknown} tool
+ * @returns {{tool: string, minChars?: number, toolNames?: readonly string[]}}
+ */
+function admissionOptions(settings, tool) {
+  return {
+    tool: String(tool ?? ''),
+    ...(settings.admissionMinChars === undefined ? {} : { minChars: settings.admissionMinChars }),
+    ...(settings.admissionToolNames === undefined ? {} : { toolNames: settings.admissionToolNames }),
   }
 }
 
