@@ -11,14 +11,14 @@ where real use found something the unit tests could not.
 | Machine | macOS, Node `v22.22.3` |
 | DeepSeek Harness | `0.2.1-alpha.1` (source checkout, and the packaged desktop runtime) |
 | Judge provider | a hosted System One endpoint, model `jev` — the private record at `$HOME/.config/typesafe-ai-jev-skill.json`. The provider's identity is elided in this record; everything else is as it ran. |
-| Test suite | `node --test` — 208 tests, no network, no key |
+| Test suite | `node --test` — 213 tests, no network, no key |
 
 ## Offline: the test suite
 
 ```console
 $ node --test
-# tests 208
-# pass 208
+# tests 213
+# pass 213
 # fail 0
 ```
 
@@ -263,6 +263,48 @@ everything, which is what that flag was always for.
 $ tail -1 ~/.dsh/judge-ledger.ndjson | jq '{point, mode, source, elidedStrings, outcome}'
 {"point":"tool.admission","mode":"active","source":"judge","elidedStrings":1,
  "outcome":{"mode":"trimmed","content":"progress line… [2995 chars, sha256:…]","kept":1,"headKept":true}}
+```
+
+## R8 — the ledger the shipped patch asked for, and never got
+
+Found by asking one plain question of the running desktop runtime: *is it using
+the plugin yet?* It was — a tool result over 4 KB was rewritten in flight, with
+the spill file and the `[jev-judge]` note in the result to prove it — but the
+ledger it is supposed to write held one record, from the day before, and nothing
+from a session that had already rewritten four results.
+
+The cause was one line of the registry. `kernel.ledger.path` was read from the
+configuration *file*, while the path that ships in `cordis.patch.yml` arrives as
+the host adapter's own row and is merged into `kernelWithOverrides` twelve lines
+above. The path was therefore undefined, `createLedger` answered `null` by
+contract ("`null` when no path is configured"), and `decide` skipped recording —
+silently, because a ledger that cannot be written is by design never the reason a
+decision fails. R7's fix was necessary and not sufficient: the patch shipped the
+path, and the code that reads configuration never saw it.
+
+This is the one failure that looks like success. The kernel judged correctly —
+the same 4334-character result was trimmed to 1344 either way, error line kept —
+while the evidence a decision point needs in order to earn `active` was being
+discarded. `modes` had been fixed for exactly this reason; the ledger sat outside
+that fix.
+
+The suite could not have caught it: no test called `createJudgeRuntime` at all,
+so `overrides` — the whole host-adapter surface — had no coverage.
+`tests/registry.test.mjs` pins it now (and fails against the old line), and a
+minimal host harness (a `tools.register`, an `on`, a logger — nothing else)
+confirms the fix through the installed artifact, the real provider record, the
+real shipped patch and the real `~/.dsh/judge-ledger.ndjson`:
+
+```console
+$ node host-probe.mjs <installed 0.1.2>
+注册的工具          : judge_items
+结果被改写          : true（原文 4334 字符 → 保留 1344 字符）
+判定后账本行数      : 1  ❌ 没有新增
+
+$ node host-probe.mjs <the same tree with the fix>
+结果被改写          : true（原文 4334 字符 → 保留 1344 字符）
+判定后账本行数      : 2  ✅ 新增了记录
+新记录              : {"point":"tool.admission","mode":"active","source":"judge","outcomeMode":"trimmed","latencyMs":1675}
 ```
 
 ## What is not verified here

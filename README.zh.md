@@ -114,7 +114,7 @@ jev-judge doctor    # 实际会发生什么：judge、模式、账本
 刻意做到零运行时依赖、无构建步骤：包可以从 checkout 直接加载，`dsh plugin add <path>` 不需要任何构建脚本授权。
 
 ```sh
-node --test              # 208 项测试，不联网
+node --test              # 213 项测试，不联网
 node src/cli.js --help
 ```
 

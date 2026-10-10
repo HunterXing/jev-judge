@@ -14,7 +14,7 @@ claimed to have done.
 |---|---|
 | `package.json` declares `dsh.bundle` | ✅ `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` |
 | A `cordis.patch.yml` next to it | ✅ inserts the `judge-kernel` row |
-| Real, working code — not a placeholder | ✅ 208 tests, verified against a real harness boot ([`verification.md`](verification.md)) |
+| Real, working code — not a placeholder | ✅ 213 tests, verified against a real harness boot ([`verification.md`](verification.md)) |
 | Repo at least one day old | ⬜ the GitHub repository has to exist first |
 | The `dsh-plugin` topic on the repository | ⬜ one command, below |
 | A description that is accurate about the code | ✅ see the draft entry; every claim is in the source |

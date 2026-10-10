@@ -224,10 +224,14 @@ export function createJudgeRuntime(options = {}) {
   problems.push(...judgeProblems)
 
   const redactor = createRedactor({ env, secrets: provider ? [provider.apiKey] : [] })
+  // From the merged configuration as well: a host adapter states the ledger path
+  // in its own row, and a ledger read from the unmerged file would leave every
+  // host-mounted deployment recording nothing while still judging.
+  const declaredLedger = kernelWithOverrides.ledger
   const ledgerOptions = {
-    path: kernel.ledger.path ? expandHome(kernel.ledger.path) : null,
-    recordState: kernel.ledger.recordState,
-    maxBytes: kernel.ledger.maxBytes,
+    path: declaredLedger.path ? expandHome(declaredLedger.path) : null,
+    recordState: declaredLedger.recordState,
+    maxBytes: declaredLedger.maxBytes,
     redactor,
   }
   const ledger = options.memoryLedger

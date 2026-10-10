@@ -143,7 +143,7 @@ No runtime dependencies and no build step, on purpose: the package loads straigh
 from a checkout, so `dsh plugin add <path>` needs no build-script approval.
 
 ```sh
-node --test              # 208 tests, no network
+node --test              # 213 tests, no network
 node src/cli.js --help
 ```
 
