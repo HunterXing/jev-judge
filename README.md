@@ -8,6 +8,16 @@ page carry instructions aimed at the model, did the user really ask for this
 command — go to a small judge instead of the main model. The agent keeps its
 context and its tokens for the work that needs reasoning.
 
+> **Read the scope before installing.** This layer treats a *context budget*, not
+> code quality or execution speed: it takes no part in compiling, caching or
+> optimising, and changes only what the model sees. Measured over 55 days of real
+> sessions on the machine it was written on — context windows of 262k–1M, zero
+> pressure-triggered compactions, zero injection hits, and 0.4/day of the one
+> decision point that maps onto an outcome — **it was uninstalled there**. See
+> [R10 of `docs/verification.md`](docs/verification.md). It earns its place when
+> the host's context really is scarce, or when the output is mostly *scanned*
+> rather than worked on: shell logs, introspection dumps, browser snapshots.
+
 It runs in **DeepSeek Harness** as a plugin bundle, in **Claude Code**, **Codex**
 and **OpenCode** through command hooks or MCP, and anywhere else that can start
 an MCP server or run a command.

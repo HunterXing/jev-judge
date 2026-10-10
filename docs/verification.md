@@ -372,6 +372,54 @@ $ node host-probe.mjs dsh-jev-judge-0.1.4 bash
 新记录              : {"point":"tool.admission","mode":"active","source":"judge","outcomeMode":"trimmed","latencyMs":2239}
 ```
 
+## R10 — the verdict on this machine: it was uninstalled
+
+R9 narrowed the point to the tools whose output is scanned. That raised the only
+question that matters for a tool like this: *does it improve the work?* On this
+machine the answer was no, and the plugin came out the same day. Over 89 sessions
+and 456 turns in 55 days:
+
+| Question | Measurement |
+|---|---|
+| Does saving context relieve anything? | Context windows in use: **262,144 / 1,000,000 / 1,048,576**. Compaction ran **12 times, all 12 from a manual command, 0 from context pressure.** |
+| Does it improve an engineering outcome? | The one point that maps onto an outcome — `turn.completion` — would have caught **24 unverified completion claims** (78 turns claimed completion, 54 had a check in the same turn, 24 did not): **≈0.4/day**. |
+| Does the safety point earn its place? | 167 tool results came from MCP or the web; **0** carried instruction-shaped text. Insurance, never exercised. |
+| Does admission help or hurt? | It cuts 84% of the eligible bytes, and **69% of the judgments were the head-floor case** — nothing earned its place, so the first chunk went through alone. A coarse filter, ~7.4 calls/day, 1.2–1.6 s each inside the tool-result path. |
+| What did it cost? | ≈10 s/day of added latency, plus rework risk. The baseline already re-runs the same command or re-reads the same file **171 times ≈ 19.3 min** across those sessions, and a point that drops evidence can only push that number up. |
+
+The shape of that: a token-level saving in a deployment that is not short of
+tokens, one outcome-shaped intervention every two and a half days, and a cost paid
+on every judged call. Four of the five defects this project found by *using* it —
+a ledger never written, a result reduced to a bare pointer, a file read thinned to
+its head, a case-sensitive tool name silently disabling the hooks adapter — were
+defects in the tool's own machinery. None of them made anyone's code better.
+
+**Removed:** the bundle from the desktop profile, the ledger
+(`~/.dsh/judge-ledger.ndjson`), the spill and lessons directories
+(`~/.dsh/jev-judge/`), the Hermes `mcp_servers` entry, the three scratch profiles,
+and a stale 0.1.2 copy under `~/workspace/tools/` that an old `.mcp.json` still
+pointed at. The repository stays as a reference implementation, which is what it
+is good for.
+
+**What would make it worth installing**, stated so the boundary is checkable
+rather than a matter of taste:
+
+1. a host whose context budget is genuinely scarce — a small window, or a
+   compaction that fires under pressure — so that a 21k-token/day saving lands on
+   something;
+2. output that is *scanned* rather than worked on, at a volume where the shell,
+   introspection dumps and browser snapshots dominate;
+3. the decision points that map onto an outcome rather than onto context.
+   `turn.completion` on unverified completion claims is the one this machine
+   measured, and it is worth more than every token admission saved.
+
+None of those hold here. The honest summary is the one the numbers give: on a
+1M-token harness used by one developer, the *tool-result seam* is the least
+valuable place to put a judgment kernel. `mu` puts one in the agent's own loop and
+lets it rewrite the outgoing context (`context.forget`, `context.compact`) — that
+is the load-bearing version, and this project deliberately did not port it
+(`mu-analysis.md`).
+
 ## What is not verified here
 
 - **A full agent turn inside DeepSeek Harness** driving the plugin's extension
